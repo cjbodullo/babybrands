@@ -1,0 +1,658 @@
+:root{
+  --bg:#ffffff;
+  --text:#2b2b2b;
+  --muted:#5f6b75;
+
+  /* Updated Teal palette with distinct colors */
+  --teal-800:#0c6a62;   
+  --teal-700:#1a5a58;   /* Very dark teal */
+  --teal-600:#159b90;   
+  --teal-500:#1fb6a6;   
+  --teal-200:#cfeeea;   
+
+  /* Your specific text colors with better contrast */
+  --text-dark:#1a5a58;  /* Very dark teal for emphasis */
+  --text-light:#4ecdc4; /* Bright teal for secondary text */
+
+  --border-strong:var(--teal-700);
+  --border-med:var(--teal-600);
+  --ring:#e6f5f3;
+}
+
+/* ===== Base ===== */
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Poppins', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  line-height:1.6;
+}
+
+/* ===== Layout ===== */
+.container{max-width:980px;margin:0 auto;padding:24px 20px}
+
+/* ===== Header with working colors ===== */
+.header{ text-align:center; margin: 28px 0 18px }
+.header h1{
+  font-size:clamp(28px,4.6vw,44px);
+  font-weight:800;
+  letter-spacing:.5px;
+  line-height:1.15;
+  margin-bottom:18px;
+}
+
+/* Dark teal text - for emphasis */
+.text-dark {
+  color: #1a5a58 !important; /* Very dark teal */
+  font-weight: 900 !important;
+}
+
+/* Light teal text - for contrast */
+.text-light {
+  color: #4ecdc4 !important; /* Bright aqua teal */
+  font-weight: 600 !important;
+}
+
+
+/* ===== Filter card ===== */
+.search-form{
+  background:#fff;
+  border:2px solid var(--border-strong);
+  border-radius:16px;
+  padding:28px;
+  box-shadow:none;
+  margin-top:22px;
+}
+
+/* ===== Form Section Headers - Left Aligned ===== */
+.form-section{ margin-bottom:26px }
+.form-section h3{
+  color: #66CCCC; /* Light teal to match your design */
+  font-size: 20px; /* Big and bold */
+  font-weight: 700; /* Extra bold */
+  letter-spacing: .08em;
+  margin-bottom: 20px;
+  text-transform: uppercase;
+  text-align: left; /* LEFT ALIGNED like in your mockup */
+  padding-left: 0; /* Ensure no extra left padding */
+}
+
+/* ================================
+   Segmented control - 4 BUTTONS IN ONE ROW
+   ================================ */
+.segmented{
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr; /* 4 equal columns */
+  gap: 12px;
+  width: 100%;
+  margin: 0; /* Remove auto centering */
+}
+
+.seg-option{ 
+  position: relative; 
+  /* Remove flex basis - grid handles sizing */
+}
+
+.seg-option input[type="radio"]{
+  position: absolute; 
+  inset: 0; 
+  opacity: 0; 
+  pointer-events: none;
+}
+
+.seg-pill{
+  display: inline-flex; 
+  align-items: center; 
+  justify-content: center;
+  width: 100%;
+  padding: 14px 16px; /* Slightly bigger padding */
+  border: 2px solid var(--border-strong);
+  background: #fff; 
+  color: var(--border-strong);
+  border-radius: 9999px; 
+  font-weight: 700; 
+  font-size: 14px; /* Ensure readable size */
+  letter-spacing: .03em;
+  transition: .15s;
+  text-align: center;
+  cursor: pointer;
+}
+
+.seg-option input[type="radio"]:checked + .seg-pill{
+  background: var(--teal-700); 
+  color: #fff; 
+  border-color: var(--teal-700);
+}
+
+.seg-pill:hover{ 
+  border-color: var(--teal-600); 
+  color: var(--teal-600);
+}
+
+.seg-option input[type="radio"]:focus + .seg-pill{
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+/* ======================
+   Alphabet letter chips
+   ====================== */
+.alphabet-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(44px,1fr));
+  gap:10px;
+  width:100%;
+  max-width:none;
+  margin:0;
+}
+.alphabet-option{ display:block; text-align:center }
+.alphabet-option input{ display:none }
+.alphabet-custom{
+  width:100%;
+  aspect-ratio:1/1;
+  display:flex; align-items:center; justify-content:center;
+  border:2px solid var(--border-med);
+  border-radius:9999px;
+  background:#fff;
+  color:#5a6872;
+  font-weight:700;
+  transition:.15s;
+}
+.alphabet-option:hover .alphabet-custom{
+  border-color:var(--teal-600); color:var(--teal-600);
+}
+.alphabet-option input:checked + .alphabet-custom{
+  background:var(--teal-200);
+  border-color:var(--teal-700);
+  color:var(--teal-700);
+}
+
+/* ==========================
+   4 Dropdowns Layout
+   ========================== */
+.dropdown-group{
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr; /* 4 equal columns */
+  gap: 12px;
+  margin-top: 12px;
+  width: 100%;
+}
+
+/* Only the dropdowns inside dropdown-group get grey text */
+.dropdown-group > .form-select {
+  color: #888888; /* grey text color */
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23888888' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+}
+
+.form-select, .form-input{
+  width: 100%; 
+  padding: 14px 16px;
+  border: 2px solid #66CCCC;
+  border-radius: 25px;
+  font-size: 14px;
+  background: #fff; 
+  color: var(--text);
+  outline: none; 
+  transition: all 0.3s ease;
+  appearance: none;
+  background-position: right 16px center;
+  background-repeat: no-repeat;
+  background-size: 16px 16px;
+  padding-right: 45px;
+  font-weight: 500;
+  min-width: 0;
+}
+
+.form-select:focus,.form-input:focus{
+  border-color: #1a5a58;
+  box-shadow: 0 0 0 4px rgba(102, 204, 204, 0.2);
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%231a5a58' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+}
+
+.form-select:hover{
+  border-color: #1a5a58;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%231a5a58' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+}
+
+/* Specific styling for the text input in search by name */
+.form-input {
+  background-image: none;
+  padding-right: 16px;
+}
+
+/* Custom placeholder styling */
+.form-select::placeholder,
+.form-input::placeholder {
+  color: #66CCCC;
+  opacity: 0.8;
+}
+
+/* Custom option styling */
+.form-select option {
+  padding: 10px;
+  background: #fff;
+  color: var(--text);
+}
+
+.form-select option:hover {
+  background: #f0fffe;
+}
+
+/* ==========================
+   Button Group - Centered after dropdowns
+   ========================== */
+.button-group {
+  display: flex; 
+  gap: 15px; 
+  justify-content: center; 
+  flex-wrap: wrap; 
+  margin: 25px 0 15px 0; /* More space above, less below */
+}
+.btn-generate {
+  padding: 12px 50px;
+  border-radius: 9999px;
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: 0.15s;
+  background-color: #66CCCC;     /* Light teal background */
+  color: #fff;                   /* White text */
+  border: 2px solid #66CCCC;     /* Matching border */
+}
+
+.btn-generate:hover { 
+  background-color: #7FDBDA;      /* Slightly lighter teal on hover */
+  border-color: #7FDBDA;
+}
+
+.btn-reset {
+  padding: 12px 50px;
+  border-radius: 9999px;
+  font-weight: 700;              /* Slightly lighter font weight */
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: 0.15s;
+  background: #fff;              /* White background */
+  color: var(--teal-700);        /* Dark teal text */
+  border: 2px solid var(--teal-700); /* Dark teal border */
+}
+
+.btn-reset:hover {
+  background: #e9f6f4;           /* Very light teal background on hover */
+  color: var(--teal-700);
+  border-color: var(--teal-700);
+}
+
+/* ==========================
+   OR Divider Section
+   ========================== */
+.or-divider {
+  display: flex;
+  align-items: center;
+  margin: 30px 0;
+  text-align: center;
+}
+
+.or-divider::before,
+.or-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #66CCCC;
+  margin: 0 20px;
+}
+
+.or-divider span {
+  color: #66CCCC;
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: 0.1em;
+  padding: 0 10px;
+  background: #fff;
+}
+
+/* ==========================
+   Results section - LIST STYLE
+   ========================== */
+.results-section{
+  background:#fff;
+  border:2px solid var(--border-strong);
+  border-radius:16px;
+  padding:28px;
+  box-shadow:none;
+  margin-top:22px;
+}
+.results-section h3{
+  color:var(--teal-700);
+  font-size:15px; font-weight:800; letter-spacing:.12em;
+  margin-bottom:20px; text-align:center;
+}
+
+/* Loading */
+.loading{ text-align:center; padding:24px }
+.spinner{
+  width:40px;height:40px;border:3px solid #eef2f2;border-top:3px solid var(--teal-600);
+  border-radius:50%; animation:spin 1s linear infinite; margin:0 auto 10px
+}
+@keyframes spin{ to{ transform:rotate(360deg) } }
+.loading p{ color:var(--muted) }
+
+/* Name results - LIST LAYOUT */
+.name-results {
+  display: block;
+}
+
+.name-list {
+  display: block;
+  padding: 0;
+  margin: 0;
+}
+
+.name-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 0;
+  border-bottom: 1px solid #a2daca;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.name-item:last-child {
+  border-bottom: none;
+}
+
+.name-item:hover {
+  background-color: #f9fbfb;
+  border-radius: 8px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.name-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--teal-700);
+  margin: 0;
+}
+
+.name-actions {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+}
+
+/* Action Icons - Clean Outlined Style */
+.action-icon {
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--teal-600);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--teal-600);
+  background: transparent !important;
+  font-size: 16px;
+  user-select: none;
+}
+
+.action-icon:hover {
+  border-color: var(--teal-800);
+  color: var(--teal-800);
+  transform: scale(1.1);
+  background: transparent !important;
+}
+
+/* Remove any existing content and use clean symbols */
+.heart-icon::before {
+  content: "♡";
+  font-size: 14px;
+}
+
+.heart-icon.active::before {
+  content: "♥";
+  color: #ef4444;
+}
+
+.plus-icon::before {
+  content: "+";
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.plus-icon.active::before {
+  content: "✓";
+  color: #22c55e;
+}
+
+/* Expanded details section */
+.name-details {
+  background-color: #FFF7E6; /* Cream */
+  border: 1px solid #fde3af; /* Soft cream border, optional */
+  border-radius: 12px;
+  padding: 20px;
+  margin: 15px 0;
+  font-size: 14px;
+  color: #2e6b68;
+  line-height: 1.6;
+  transition: background-color 0.2s;
+}
+
+.name-details-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-weight: 600;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.detail-item {
+  margin-bottom: 8px;
+}
+
+.detail-label {
+  font-weight: 600;
+  color: #066d67;
+}
+
+.name-description {
+  margin-top: 12px;
+  color: #2e6b68;
+  text-align: justify;
+  line-height: 1.7;
+}
+
+/* HIDE INDIVIDUAL SEE MORE BUTTONS */
+.see-more-btn {
+  display: none !important;
+}
+
+/* BOTTOM ACTION BUTTONS STYLING */
+.bottom-actions {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin-top: 30px;
+  padding: 20px 0;
+  border-top: 1px solid #e6f5f3;
+}
+
+.btn-show-more,
+.btn-reset-bottom {
+  padding: 12px 24px;
+  border: 2px solid var(--teal-600);
+  border-radius: 25px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn-show-more {
+  background: var(--teal-600);
+  color: white;
+  min-width: 140px;
+}
+
+.btn-show-more:hover {
+  background: var(--teal-700);
+  border-color: var(--teal-700);
+  transform: translateY(-2px);
+}
+
+.btn-reset-bottom {
+  background: transparent;
+  color: var(--teal-600);
+  min-width: 100px;
+}
+
+.btn-reset-bottom:hover {
+  background: var(--teal-600);
+  color: white;
+  transform: translateY(-2px);
+}
+
+.btn-show-more:disabled {
+  background: #ccc;
+  border-color: #ccc;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Messages */
+.error-message{
+  background:#fff5f5; border:1px solid #ffd7d7; color:#b42318; border-radius:10px; padding:16px; text-align:center;
+}
+.success-message{
+  background:#f0fff8; border:1px solid #c6f6d5; color:#166534; border-radius:10px; padding:16px; text-align:center;
+}
+
+/* ==========================
+   Responsive Design
+   ========================== */
+@media (max-width: 1024px){
+  .dropdown-group{
+    grid-template-columns: 1fr 1fr; /* 2 columns on tablets */
+    gap: 14px;
+  }
+  
+  .form-select,.form-input{
+    padding: 16px 18px;
+    font-size: 15px;
+    padding-right: 50px;
+  }
+}
+
+/* ===== MOBILE RESPONSIVE - Keep 4 in a row ===== */
+@media (max-width: 768px){
+  .container{ padding:16px }
+  
+  .segmented{
+    grid-template-columns: 1fr 1fr 1fr 1fr; /* Still 4 columns on mobile */
+    gap: 8px; /* Smaller gap on mobile */
+  }
+  
+  .seg-pill{
+    padding: 12px 8px; /* Smaller padding on mobile */
+    font-size: 12px; /* Smaller text on mobile */
+  }
+  
+  .form-section h3{
+    font-size: 16px; /* Slightly smaller on mobile */
+  }
+  
+  .dropdown-group {
+    grid-template-columns: 1fr; /* 1 column on mobile */
+    gap: 12px;
+  }
+  
+  .or-divider::before,
+  .or-divider::after {
+    margin: 0 15px;
+  }
+  
+  .or-divider span {
+    font-size: 14px;
+  }
+  
+  .name-item {
+    padding: 12px 0;
+  }
+  
+  .name-title {
+    font-size: 16px;
+  }
+  
+  .name-actions {
+    gap: 12px;
+  }
+  
+  .action-icon {
+    width: 24px;
+    height: 24px;
+    font-size: 14px;
+  }
+  
+  .name-details {
+    padding: 15px;
+    font-size: 13px;
+  }
+  
+  .name-details-header {
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .bottom-actions {
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+  }
+  
+  .btn-show-more,
+  .btn-reset-bottom {
+    width: 200px;
+  }
+
+  .form-select,.form-input{
+    padding:14px 18px;
+    font-size:15px;
+  }
+}
+
+/* ===== VERY SMALL MOBILE - Stack if needed ===== */
+@media (max-width: 480px){
+  .segmented{
+    grid-template-columns: 1fr 1fr; /* 2 columns on very small screens */
+    gap: 10px;
+  }
+  
+  .seg-pill{
+    padding: 12px 10px;
+    font-size: 13px;
+  }
+
+  .alphabet-grid{ 
+    grid-template-columns: repeat(auto-fit, minmax(48px, 1fr)); 
+    gap:12px;
+  }
+  .alphabet-custom{ 
+    font-size:16px;
+  }
+
+  .form-select,.form-input{
+    padding:12px 16px;
+    font-size:14px;
+  }
+}
+
+
+
+

@@ -1,0 +1,294 @@
+:root {
+  --primary: #66CCCC;
+  --secondary: #FF7276;
+  --cream: #f5eee6;
+  --dark: #096768;
+}
+
+body {
+  margin: 0;
+  font-family: 'Montserrat', sans-serif;
+}
+
+/* ---------------- HEADER ---------------- */
+.header-wrapper {
+  position: relative; /* scrolls with page instead of fixed */
+  top: 0;
+  width: 100%;
+  z-index: 1000;
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+/* ---------------- ICONS STRIP (Desktop) ---------------- */
+.header-top-strip {
+  background: var(--cream);
+  padding: 20px 50px;
+}
+
+.contact-list-desktop {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 30px;
+  margin: 0;
+  padding: 0;
+  justify-content: left;
+}
+
+.contact-list-desktop li img {
+  height: 40px;
+  display: none;
+}
+
+.contact-list-desktop li .default-img { display: inline-block; }
+.contact-list-desktop li a:hover .default-img { display: none; }
+.contact-list-desktop li a:hover .hover-img { display: inline-block; }
+.contact-list-desktop li a.selected .default-img { display: none; }
+.contact-list-desktop li a.selected .selected-img { display: inline-block; }
+
+.divider {
+  width: 1px;
+  height: 40px;
+  background: #555;
+}
+
+.top-strip-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+@media (min-width: 1200px) {
+  .top-strip-container { justify-content: center; }
+}
+
+/* ---------------- MOBILE DROPDOWN ---------------- */
+.contact-list-mobile {
+  display: none;
+  padding: 10px 20px;
+}
+.contact-list-mobile img { height: 30px; }
+.contact-list-mobile .btn.dropdown-toggle {
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0;
+}
+
+/* ---------------- MAIN STRIP ---------------- */
+.header-main-strip {
+  background: #fff;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.brand-logo { flex: 0 0 auto; }
+.brand-logo img { height: 60px; }
+
+.main-navigation {
+  margin-left: auto;
+}
+.main-navigation ul {
+  list-style: none;
+  display: flex;
+  gap: 30px;
+  margin: 0;
+  padding: 0;
+}
+.main-navigation ul li a {
+  text-decoration: none;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 16px;
+  color: #096768;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+.main-navigation ul li a:hover {
+  color: #FF7276;
+  text-decoration: none;
+}
+
+.search i {
+  font-size: 18px;
+  color: #444;
+  border: 2px solid #d1d5db;
+  border-radius: 50%;
+  padding: 10px;
+  transition: all 0.3s ease;
+}
+.search i:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+/* Hamburger */
+.hamburger {
+  display: none;
+  position: relative;
+  z-index: 2001; /* always clickable */
+}
+.hamburger i {
+  font-size: 22px;
+  color: #096768;
+  cursor: pointer;
+}
+
+@media (max-width: 768px) {
+  .contact-list-desktop { display: none !important; }
+  .contact-list-mobile { display: block !important; }
+  .main-navigation { display: none; }
+  .brand-logo { order: 1; }
+  .search { order: 2; margin: 0 auto; }
+  .hamburger { order: 3; display: block; }
+  .header-icons { gap: 15px; }
+}
+
+
+
+
+/* ---------------- REGISTER BUTTON ---------------- */
+.register-btn {
+  display: none;
+  background-color: #f89455;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 25px;
+  border-radius: 20px;
+  text-decoration: none;
+  border: 2px solid #f89455;
+  transition: all 0.3s ease;
+}
+.register-btn:hover {
+  background-color: #fff;
+  color: #f89455;
+  border: 2px solid #f89455;
+}
+@media (min-width: 1200px) {
+  .register-btn { display: inline-block; }
+}
+
+/* ---------------- MOBILE MENU ---------------- */
+.mobile-menu {
+  position: fixed;
+  top: 0;
+  right: -100%;
+  width: 300px;
+  max-width: 80%;
+  height: 100vh;
+  background: var(--cream);
+  box-shadow: -2px 0 8px rgba(0,0,0,0.2);
+  transition: right 0.4s ease;
+  z-index: 2000;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+.mobile-menu.active { right: 0; }
+
+.mobile-menu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+.mobile-menu-header img {
+  max-width: 120px;
+  height: auto;
+}
+.close-btn {
+  background: #f89455;
+  border: none;
+  color: #fff;
+  font-size: 24px;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  line-height: 40px;
+  text-align: center;
+}
+
+.mobile-menu ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 20px 0;
+}
+.mobile-menu ul li { margin-bottom: 20px; }
+.mobile-menu ul li a {
+  font-size: 18px;
+  text-decoration: none;
+  color: var(--dark);
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+.mobile-menu ul li a:hover { color: var(--secondary); }
+
+.mobile-menu .register-btn {
+  display: inline-block;
+  background-color: #f89455;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 12px 25px;
+  border-radius: 20px;
+  text-decoration: none;
+  text-align: center;
+  border: 2px solid #f89455;
+  transition: all 0.3s ease;
+  margin-top: 15px;
+}
+.mobile-menu .register-btn:hover {
+  background-color: #fff;
+  color: #f89455;
+  border: 2px solid #f89455;
+}
+
+/* ---------------- OVERLAY ---------------- */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  z-index: 1500;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+.overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+
+/* ===== Footer Styling ===== */
+/* ===== Footer Styling ===== */
+.footer {
+  background: var(--dark);   /* teal color */
+  color: #fff;              /* white text */
+  padding: 20px 40px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
+
+.footer p {
+  margin: 0;
+  text-align: left; /* align text to the left */
+  letter-spacing: 0.5px;
+}
+

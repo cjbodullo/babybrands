@@ -1,0 +1,157 @@
+.pgp-gallery {
+    display: grid;
+    gap: 12px;
+}
+
+.pgp-cols-1 {
+    grid-template-columns: 1fr;
+}
+
+.pgp-cols-2 {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.pgp-cols-3 {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.pgp-cols-4 {
+    grid-template-columns: repeat(4, 1fr);
+}
+
+.pgp-cols-5 {
+    grid-template-columns: repeat(5, 1fr);
+}
+
+.pgp-cols-6 {
+    grid-template-columns: repeat(6, 1fr);
+}
+
+.pgp-item {
+    display: block;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.pgp-item img {
+    width: 100%;
+    height: 220px;
+    object-fit: cover;
+    display: block;
+}
+
+/* Winner-style cards */
+.pgp-winners {
+    display: grid;
+    gap: 20px 22px;
+}
+
+.pgp-winners-cols-1 {
+    grid-template-columns: 1fr;
+}
+
+.pgp-winners-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.pgp-winners-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.pgp-winners-cols-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.pgp-winners-cols-5 {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.pgp-winners-cols-6 {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.pgp-winner-card {
+    background: transparent;
+    border-radius: 0;
+    overflow: visible;
+    box-shadow: none;
+}
+
+.pgp-winner-image-wrap {
+    width: 100%;
+    border-radius: 20px;
+    overflow: hidden;
+    background: #d9edf0;
+}
+
+.pgp-winner-image {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    display: block;
+}
+
+.pgp-winner-meta {
+    margin-top: 10px;
+    padding: 2px 2px 0 8px;
+    background: transparent;
+    border-left: 5px solid #ff5e35;
+}
+
+.pgp-winner-name {
+    padding-top: 10px;
+    margin: 0 0 2px;
+    color: #166d77;
+    font-size: 28px;
+    line-height: 1.05;
+    font-weight: 700;
+    letter-spacing: 0;
+}
+
+.pgp-winner-location {
+    margin: 0;
+    padding-left: 0;
+    color: #4a7280;
+    font-size: 20px;
+    line-height: 1.2;
+    font-weight: 400;
+}
+
+@media (max-width: 1024px) {
+    .pgp-winners-cols-4,
+    .pgp-winners-cols-5,
+    .pgp-winners-cols-6 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .pgp-winners-cols-3,
+    .pgp-winners-cols-4,
+    .pgp-winners-cols-5,
+    .pgp-winners-cols-6 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .pgp-winner-name {
+        font-size: 22px;
+    }
+
+    .pgp-winner-location {
+        font-size: 17px;
+    }
+}
+
+@media (max-width: 520px) {
+    .pgp-winners {
+        gap: 14px;
+    }
+
+    .pgp-winner-name {
+        font-size: 18px;
+    }
+
+    .pgp-winner-location {
+        font-size: 15px;
+    }
+}
