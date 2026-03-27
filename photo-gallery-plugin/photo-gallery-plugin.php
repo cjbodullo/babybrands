@@ -67,6 +67,31 @@ function pgp_enqueue_assets()
         [],
         PGP_VERSION
     );
+
+    wp_enqueue_style(
+        'glightbox-css',
+        'https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css'
+    );
+
+    wp_enqueue_script(
+        'glightbox-js',
+        'https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js',
+        [],
+        null,
+        true
+    );
+
+    wp_add_inline_script('glightbox-js', "
+        document.addEventListener('DOMContentLoaded', function() {
+            const lightbox = GLightbox({
+                selector: '.glightbox',
+                touchNavigation: true,
+                loop: true,
+                zoomable: true,
+            });
+        });
+    ");
+
 }
 add_action('wp_enqueue_scripts', 'pgp_enqueue_assets');
 
@@ -185,8 +210,17 @@ function pgp_render_winner_photo_gallery($atts)
 
     $rows = $wpdb->get_results($wpdb->prepare($query, $limit));
     if (empty($rows)) {
-        return '<p>No winner photos found.</p>';
-    }
+    return '<div class="pgp-border-warning">
+                <span class="pgp-warning-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 9v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M12 17h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M10.29 3.86l-8.3 14.29A2 2 0 0 0 3.7 21h16.6a2 2 0 0 0 1.71-2.85l-8.3-14.29a2 2 0 0 0-3.42 0z" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                </span>
+                <span>Winner photos are currently under review.</span>
+            </div>';
+	}
 
     $output = '<div class="pgp-winners pgp-winners-cols-' . esc_attr((string) $columns) . '">';
 
@@ -207,14 +241,27 @@ function pgp_render_winner_photo_gallery($atts)
 
         $location = trim($city . (strlen($province) ? ', ' . $province : ''));
 
+        $altText = $firstName . ' Winner Photo';
+
+        // GLIGHTBOX WRAPPER START
         $output .= '<article class="pgp-winner-card">';
+
+        $output .= '<a href="' . esc_url($photoUrl) . '" 
+                        class="glightbox pgp-winner-link"
+                        data-gallery="pgp-winners"
+                        data-type="image">';
+
         $output .= '<div class="pgp-winner-image-wrap">';
-        $output .= '<img class="pgp-winner-image" src="' . esc_url($photoUrl) . '" alt="' . esc_attr($firstName . ' winner photo') . '">';
+        $output .= '<img class="pgp-winner-image" src="' . esc_url($photoUrl) . '" alt="' . esc_attr($altText) . '">';
         $output .= '</div>';
+
+        $output .= '</a>';
+
         $output .= '<div class="pgp-winner-meta">';
         $output .= '<h3 class="pgp-winner-name">' . esc_html($firstName) . '</h3>';
         $output .= '<p class="pgp-winner-location">' . esc_html($location) . '</p>';
         $output .= '</div>';
+
         $output .= '</article>';
     }
 
@@ -227,8 +274,8 @@ add_shortcode('winner_photo_gallery', 'pgp_render_winner_photo_gallery');
 function pgp_register_admin_menu()
 {
     add_menu_page(
-        'Winner Gallery',
-        'Winner Gallery',
+        'Winners Gallery',
+        'Winners Gallery',
         'manage_options',
         'pgp-winner-gallery',
         'pgp_render_admin_page',
@@ -294,6 +341,37 @@ function pgp_handle_admin_actions()
 }
 add_action('admin_init', 'pgp_handle_admin_actions');
 
+
+function pgp_update_photo()
+{
+    global $wpdb;
+
+    $table = pgp_get_winner_table_name();
+
+    if (empty($_FILES['photo']['name'])) {
+        wp_send_json_error();
+    }
+
+    require_once(ABSPATH . 'wp-admin/includes/file.php');
+
+    $uploaded = wp_handle_upload($_FILES['photo'], ['test_form' => false]);
+
+    if (isset($uploaded['error'])) {
+        wp_send_json_error();
+    }
+
+    $file_url = $uploaded['url'];
+
+    $wpdb->update(
+        $table,
+        ['winner_photo_path' => $file_url],
+        ['id' => intval($_POST['submission_id'])]
+    );
+
+    wp_send_json_success(['url' => $file_url]);
+}
+add_action('wp_ajax_pgp_update_photo', 'pgp_update_photo');
+
 function pgp_render_admin_page()
 {
     if (!current_user_can('manage_options')) {
@@ -304,8 +382,8 @@ function pgp_render_admin_page()
     pgp_ensure_winner_table_schema();
     $tableName = pgp_get_winner_table_name();
 
-    echo '<div class="wrap"><h1>Winner Gallery Approvals</h1>';
-    echo '<p>Approve or reject winner photos.</p>';
+    echo '<div class="wrap"><h1>Winners Gallery Approvals</h1>';
+    echo '<p>Approve or reject winner photo.</p>';
 
     if (isset($_GET['updated'])) {
         echo '<div class="notice notice-success is-dismissible"><p>Status updated.</p></div>';
@@ -345,6 +423,22 @@ function pgp_render_admin_page()
     echo '</tr></thead><tbody>';
     $hiddenDetailsHtml = '';
 
+    $fieldNames = [
+        'first_name' => 'First Name',
+        'last_name' => 'Last Name',
+        'email' => 'Email',
+        'phone' => 'Phone Number',
+        'address_1' => 'Address 1',
+        'address_2' => 'Address 2',
+        'city' => 'City',
+        'province' => 'Province',
+        'postal_code' => 'Postal Code',
+        'winner_photo_path' => 'Photo File',
+        'status' => 'Status',
+        'agreed_terms' => 'Agree Terms',
+        'created_at' => 'Created At',
+    ];
+
     foreach ($rows as $key=>$row) {
         $photoUrl = pgp_build_photo_url($row->winner_photo_path ?? '');
         $name = trim((string) ($row->first_name ?? '') . ' ' . (string) ($row->last_name ?? ''));
@@ -359,10 +453,13 @@ function pgp_render_admin_page()
 
         $detailRowsHtml = '';
         foreach ((array) $row as $field => $value) {
-            $detailRowsHtml .= '<tr>';
-            $detailRowsHtml .= '<th style="width:220px;">' . esc_html((string) $field) . '</th>';
-            $detailRowsHtml .= '<td>' . esc_html((string) $value) . '</td>';
-            $detailRowsHtml .= '</tr>';
+            if($field === 'agreed_terms') $value = $value==1?'Agree':'Disagree';
+            if(isset($fieldNames[$field])){
+                $detailRowsHtml .= '<tr>';
+                $detailRowsHtml .= '<th style="width:220px;">' . esc_html((string) $fieldNames[$field]) . '</th>';
+                $detailRowsHtml .= '<td>' . esc_html((string) $value) . '</td>';
+                $detailRowsHtml .= '</tr>';
+            }
         }
 
         echo '<tr>';
@@ -380,6 +477,12 @@ function pgp_render_admin_page()
         echo '<td style="vertical-align: middle;">' . esc_html((string) $row->created_at) . '</td>';
         echo '<td style="vertical-align: middle;">';
         echo '<button type="button" class="button pgp-view-details-btn" data-target="pgp-detail-' . esc_attr((string) $id) . '">View Details</button> ';
+        echo '<button type="button" 
+        class="button button-secondary pgp-edit-btn" 
+        data-id="' . esc_attr($id) . '" 
+        data-photo="' . esc_url($photoUrl) . '">
+        Edit
+      </button> ';
         echo '<a class="button button-primary" href="' . esc_url($approveUrl) . '">Approve</a> ';
         echo '<a class="button" href="' . esc_url($rejectUrl) . '">Reject</a> ';
         echo '<a class="button" href="' . esc_url($pendingUrl) . '">Set Pending</a> ';
@@ -426,6 +529,26 @@ function pgp_render_admin_page()
     echo '<button type="button" id="pgp-admin-modal-close" class="button" style="position:absolute;right:14px;top:14px;">Close</button>';
     echo '<div id="pgp-admin-modal-content"></div>';
     echo '</div></div>';
+    echo '<div id="pgp-edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99999;">
+            <div style="max-width:500px;margin:60px auto;background:#fff;padding:20px;border-radius:12px;position:relative;">
+                <button type="button" id="pgp-edit-close" class="button" style="position:absolute;top:10px;right:10px;">Close</button>
+
+                <h2>Edit Photo</h2>
+
+                <div style="text-align:center;margin-bottom:15px;">
+                    <img id="pgp-edit-preview" src="" style="max-width:200px;border-radius:8px;">
+                </div>
+
+                <input type="file" id="pgp-edit-file" accept="image/*">
+
+                <div style="margin-top:15px;">
+                    <a id="pgp-download-btn" class="button" href="#" download>Download</a>
+                    <button id="pgp-save-btn" class="button button-primary">Save</button>
+                </div>
+
+                <input type="hidden" id="pgp-edit-id">
+            </div>
+        </div>';
     echo '<script>
     (function () {
         var modal = document.getElementById("pgp-admin-modal");
@@ -455,6 +578,77 @@ function pgp_render_admin_page()
         document.addEventListener("keydown", function (event) {
             if (event.key === "Escape") closeModal();
         });
+    })();
+
+    (function () {
+
+    const editModal = document.getElementById("pgp-edit-modal");
+    const preview = document.getElementById("pgp-edit-preview");
+    const fileInput = document.getElementById("pgp-edit-file");
+    const saveBtn = document.getElementById("pgp-save-btn");
+    const closeBtn = document.getElementById("pgp-edit-close");
+    const downloadBtn = document.getElementById("pgp-download-btn");
+    const idInput = document.getElementById("pgp-edit-id");
+
+    // OPEN MODAL
+    document.addEventListener("click", function (e) {
+        const btn = e.target.closest(".pgp-edit-btn");
+        if (!btn) return;
+
+        const id = btn.dataset.id;
+        const photo = btn.dataset.photo;
+
+        idInput.value = id;
+        preview.src = photo;
+        downloadBtn.href = photo;
+
+        editModal.style.display = "block";
+    });
+
+    // PREVIEW NEW IMAGE
+    fileInput.addEventListener("change", function () {
+        const file = this.files[0];
+        if (!file) return;
+
+        preview.src = URL.createObjectURL(file);
+    });
+
+    // SAVE VIA AJAX
+    saveBtn.addEventListener("click", function () {
+        const file = fileInput.files[0];
+        const id = idInput.value;
+
+        if (!file) {
+            alert("Please select an image.");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("action", "pgp_update_photo");
+        formData.append("submission_id", id);
+        formData.append("photo", file);
+
+        fetch(ajaxurl, {
+            method: "POST",
+            body: formData
+        })
+        .then(res => res.json())
+        .then(res => {
+            if (res.success) {
+                alert("Updated successfully!");
+                location.reload();
+            } else {
+                alert("Error updating.");
+            }
+        });
+    });
+
+    // CLOSE
+    closeBtn.onclick = () => editModal.style.display = "none";
+    editModal.onclick = (e) => {
+        if (e.target === editModal) editModal.style.display = "none";
+    };
+
     })();
     </script>';
 }

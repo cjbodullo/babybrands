@@ -16,7 +16,7 @@
 
 .wpr-container .header h1 {
     margin-bottom: 10px;
-    font-size: clamp(32px, 4.2vw, 42px);
+    font-size: clamp(28px, 4.2vw, 36px);
     color: #116b6b;
     font-weight: 700;
     letter-spacing: 0;
@@ -306,7 +306,7 @@
     }
 
     .wpr-container .header h1 {
-        font-size: clamp(28px, 7vw, 40px);
+        font-size: clamp(24px, 7vw, 32px);
     }
 }
 
@@ -432,4 +432,25 @@
 }
 .toggle-terms:hover {
     text-decoration: underline;
+}
+
+/* Thank you page */
+.wpr-thank-you {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.wpr-thank-you h2 {
+    font-size: 28px;
+    margin-bottom: 10px;
+}
+
+.wpr-thank-you p {
+    font-size: 16px;
+    margin-bottom: 10px;
+}
+
+.wpr-thank-you .btn-generate {
+    margin-top: 20px;
+    display: inline-block;
 }

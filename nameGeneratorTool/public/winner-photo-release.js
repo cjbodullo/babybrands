@@ -7,7 +7,7 @@
     var phoneInput = document.getElementById("phone");
     var form = document.getElementById("winner-photo-release-form");
     var MAX_FILE_SIZE = 10 * 1024 * 1024;
-    var ALLOWED_TYPES = ["image/png", "image/jpeg", "image/jpg"];
+    var ALLOWED_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
 
     if (!form) {
         return;
@@ -45,7 +45,7 @@
             return "Please select an image file.";
         }
         if (ALLOWED_TYPES.indexOf(file.type) === -1) {
-            return "Only PNG, JPG, or JPEG files are allowed.";
+            return "Only PNG, JPG, JEPG or WEBP files are allowed.";
         }
         if (file.size > MAX_FILE_SIZE) {
             return "File is too large. Maximum size is 10MB.";

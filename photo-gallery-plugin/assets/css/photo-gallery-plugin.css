@@ -79,49 +79,77 @@
 
 .pgp-winner-image-wrap {
     width: 100%;
-    border-radius: 20px;
+    border-radius: 24px;
     overflow: hidden;
     background: #d9edf0;
 }
 
 .pgp-winner-image {
     width: 100%;
-    aspect-ratio: 1 / 1;
+    aspect-ratio: 6 / 5;
     object-fit: cover;
     display: block;
+	transition: transform 0.3s ease;
+}
+
+.pgp-winner-image-wrap:hover img {
+    transform: scale(1.05);
 }
 
 .pgp-winner-meta {
-    margin-top: 10px;
+    margin-top: 8px;
+	margin-left: 4px;
     padding: 2px 2px 0 8px;
     background: transparent;
-    border-left: 5px solid #ff5e35;
+    border-left: 4px solid #ff5e35;
 }
 
 .pgp-winner-name {
-    padding-top: 10px;
     margin: 0 0 2px;
     color: #166d77;
-    font-size: 28px;
     line-height: 1.05;
     font-weight: 700;
     letter-spacing: 0;
+	font-size: 18px;
 }
 
 .pgp-winner-location {
     margin: 0;
     padding-left: 0;
     color: #4a7280;
-    font-size: 20px;
     line-height: 1.2;
     font-weight: 400;
 }
+.pgp-border-warning {
+    border: 1px solid #f59e0b;
+    color: #b45309;
+    padding: 12px 14px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    margin: 10px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
 
+.pgp-warning-icon {
+    display: flex;
+    align-items: center;
+    color: #f59e0b;
+    flex-shrink: 0;
+}
+
+.pgp-warning-icon svg {
+    display: block;
+    transform: rotate(0deg);
+    transform-origin: center;
+}
 @media (max-width: 1024px) {
     .pgp-winners-cols-4,
     .pgp-winners-cols-5,
     .pgp-winners-cols-6 {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
@@ -130,11 +158,11 @@
     .pgp-winners-cols-4,
     .pgp-winners-cols-5,
     .pgp-winners-cols-6 {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(1, minmax(0, 1fr));
     }
 
     .pgp-winner-name {
-        font-size: 22px;
+        font-size: 18px;
     }
 
     .pgp-winner-location {
@@ -148,7 +176,7 @@
     }
 
     .pgp-winner-name {
-        font-size: 18px;
+        font-size: 16px;
     }
 
     .pgp-winner-location {

@@ -1,5 +1,5 @@
 // Baby Name Generator - With Duplicate Prevention
-console.log('JavaScript loaded successfully');
+
 
 // Global variables with duplicate tracking
 let currentFormData = null;
@@ -7,7 +7,7 @@ let displayedNames = [];
 let allGeneratedNames = []; // Track all names ever generated
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM loaded, initializing form...');
+ 
     
     // Get DOM elements
     const form = document.getElementById('babyNameForm');
@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const resetBtn = document.getElementById('resetBtn');
     
     if (!form) {
-        console.error('ERROR: Form not found!');
+  
         return;
     }
     
@@ -352,5 +352,4 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    console.log('Baby Name Generator with Duplicate Prevention initialized successfully');
 });

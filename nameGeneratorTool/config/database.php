@@ -1,10 +1,17 @@
 <?php
 // Database configuration for local XAMPP usage.
 // You can override these with environment variables.
+
+define('DB_HOST', 'localhost');
+define('DB_USER', 'root');
+define('DB_PASS', '');
+define('DB_NAME', 'babybrands_db');
+define('DB_PORT', 3306);
+
 return [
-    'host' => getenv('DB_HOST') ?: '127.0.0.1',
-    'username' => getenv('DB_USER') ?: 'root',
-    'password' => getenv('DB_PASS') ?: '',
-    'database' => getenv('DB_NAME') ?: 'babybrands_db',
-    'port' => (int) (getenv('DB_PORT') ?: 3306),
+    'host'      => DB_HOST,
+    'username'  => DB_USER,
+    'password'  => DB_PASS,
+    'database'  => DB_NAME,
+    'port'      => DB_PORT,
 ];

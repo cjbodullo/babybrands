@@ -1,4 +1,4 @@
-<link rel="stylesheet" href="public/winner-photo-release.css?v=<?php echo filemtime(__DIR__ . '/../public/winner-photo-release.css'); ?>">
+<link rel="stylesheet" href="/nameGeneratorTool/public/winner-photo-release.css">
 <!-- GLightbox CSS -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css" />
 <!-- GLightbox JS -->
@@ -13,28 +13,44 @@ $winners = $controller->getApprovedWinners(4);
 function esc_html($str) {
     return htmlspecialchars($str, ENT_QUOTES, 'UTF-8');
 }
+
 function esc_url($url) {
-    return filter_var($url, FILTER_SANITIZE_URL);
+    $base_url = 'https://www.babybrandsgiftclub.com';
+    $url = filter_var($url, FILTER_SANITIZE_URL);
+    if (preg_match('#^https?://#', $url)) {
+        return $url;
+    }
+    // ensure slash handling
+    return rtrim($base_url, '/') . '/' . ltrim($url, '/');
 }
 ?>
+
 
 <main class="wpr-page">
     <div class="container wpr-container">
         <header class="header">
             <h1>WINNER PHOTO RELEASE FORM</h1>
+            <?php if ( !isset($_SESSION['flash_form_success'])): ?>
             <p class="wpr-subtitle">
                 Congratulations on your win! Please complete this form to give us permission to share your joy with our community.
             </p>
+            <?php endif; ?>
         </header>
 
-        <div class="search-form wpr-form-wrap">
-            <?php if (isset($_SESSION['flash_form_success'])): ?>
-                <div class="success-message mb-3">
-                    <?php echo htmlspecialchars($_SESSION['flash_form_success']); ?>
-                </div>
-                <?php unset($_SESSION['flash_form_success']); ?>
-            <?php endif; ?>
+        <?php if (isset($_SESSION['flash_form_success'])): ?>
+            <div class="wpr-thank-you">
+                <h2>🎉 Thank You!</h2>
+                <p>Your photo has been successfully submitted.</p>
+                <p>We appreciate you sharing your special moment with us!</p>
 
+                <a href="?page=winner-photo-release" class="btn-generate wpr-submit-btn" style="width:240px; text-decoration: none; font-size: 16px;">
+                    <span> Submit Another Photo </span>
+                </a>
+            </div>
+             <?php unset($_SESSION['flash_form_success']); ?>
+        <?php else: ?>
+
+            <div class="wpr-form-wrap">
             <?php if (isset($_SESSION['flash_form_error'])): ?>
                 <div class="error-message mb-3">
                     <?php echo htmlspecialchars($_SESSION['flash_form_error']); ?>
@@ -47,8 +63,8 @@ function esc_url($url) {
                 <div class="winners-gallery">
                     <?php foreach ($winners as $winner) : ?>
                         <div class="gallery-item">
-                            <a href="<?php echo esc_url('/wordpress/'.$winner['winner_photo_path']); ?>" class="glightbox">
-                                <img src="<?php echo esc_url('/wordpress/'.$winner['winner_photo_path']); ?>" alt="Winner Photo">
+                            <a href="<?php echo esc_url($winner['winner_photo_path']); ?>" class="glightbox">
+                                <img src="<?php echo esc_url($winner['winner_photo_path']); ?>" alt="Winner Photo">
                             </a>
                             <div class="winner-info">
                                 <h4><?php echo esc_html($winner['first_name']); ?></h4>
@@ -143,10 +159,10 @@ function esc_url($url) {
                         <label for="winner_photo" class="wpr-upload-box" id="upload-box">
                             <i class="fa-solid fa-arrow-up-from-bracket"></i>
                             <strong>Click to upload or drag and drop</strong>
-                            <span>PNG, JPG or JPEG (MAX. 10MB)</span>
+                            <span>PNG, JPG, JPEG or WEBP(MAX. 10MB)</span>
                             <em id="upload-filename">No file selected</em>
                         </label>
-                        <input type="file" id="winner_photo" name="winner_photo" accept=".png,.jpg,.jpeg" required>
+                        <input type="file" id="winner_photo" name="winner_photo" accept=".png,.jpg,.jpeg,.webp" required>
                         <p id="upload-error" class="wpr-upload-error" aria-live="polite"></p>
                         <img id="upload-preview" class="wpr-upload-preview" alt="Uploaded winner photo preview">
                     </div>
@@ -194,6 +210,8 @@ function esc_url($url) {
             </form>
         </div>
 
+        <?php endif; ?>
+
         <p class="wpr-contact">
             Questions? Contact us at
             <a href="mailto:support@babybrandsgiftclub.com">support@babybrandsgiftclub.com</a>
@@ -217,4 +235,4 @@ function toggleTerms() {
     }
 }
 </script>
-<script src="public/winner-photo-release.js?v=<?php echo filemtime(__DIR__ . '/../public/winner-photo-release.js'); ?>"></script>
+<script src="/nameGeneratorTool/public/winner-photo-release.js"></script>

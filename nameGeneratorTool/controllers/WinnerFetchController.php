@@ -44,7 +44,7 @@ class WinnerFetchController
              
             return $data;
         } catch (\mysqli_sql_exception $e) {
-            return []; // ✅ prevent crash
+            return []; //
         }
     }
 }

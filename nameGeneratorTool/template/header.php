@@ -4,7 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><?php echo isset($title) ? $title : "BabyBrands"; ?></title>
-  
+
+  <link rel="icon" href="https://www.babybrandsgiftclub.com/wp-content/uploads/2025/07/cropped-Favicon_B-1-32x32.png" sizes="32x32" />
+  <link rel="icon" href="https://www.babybrandsgiftclub.com/wp-content/uploads/2025/07/cropped-Favicon_B-1-192x192.png" sizes="192x192" />
+  <link rel="apple-touch-icon" href="https://www.babybrandsgiftclub.com/wp-content/uploads/2025/07/cropped-Favicon_B-1-180x180.png" />
+
   <!-- Global CSS for header/footer -->
   <link rel="stylesheet" href="https://www.babybrandsgiftclub.com/nameGeneratorTool/template/style.css">
   

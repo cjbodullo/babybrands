@@ -33,8 +33,8 @@ $postalCode = clean('postal_code');
 $agreeTerms = isset($_POST['agree_terms']) ? 1 : 0;
 
 if (
-    $firstName === '' || $lastName === '' || $email === '' || $phone === '' ||
-    $address1 === '' || $city === '' || $province === '' || $postalCode === '' || $agreeTerms !== 1
+    $firstName === '' || $email === '' || $phone === '' ||
+    $address1 === '' || $city === '' || $province === '' || $agreeTerms !== 1
 ) {
     redirectWithError('Please complete all required fields.');
 }
@@ -64,24 +64,29 @@ if ($tmpName === '' || !is_uploaded_file($tmpName)) {
 
 $finfo = finfo_open(FILEINFO_MIME_TYPE);
 $mimeType = $finfo ? finfo_file($finfo, $tmpName) : '';
-if ($finfo) {
-    finfo_close($finfo);
-}
+if($finfo) finfo_close($finfo);
 
 $allowedMimeToExt = [
     'image/jpeg' => 'jpg',
     'image/png' => 'png',
+    'image/webp' => 'webp',
 ];
 
 if (!isset($allowedMimeToExt[$mimeType])) {
-    redirectWithError('Only PNG and JPG images are allowed.');
+    redirectWithError('Only PNG, JPG and WEBP images are allowed.');
+}
+
+$wpUploadsBaseDir = realpath('/var/www/wordpress/wwwroot/wp-content/uploads');
+
+if ($wpUploadsBaseDir === false) {
+    redirectWithError('Upload base path is invalid');
 }
 
 // Save uploads into external WordPress folder:
 // d:/xampp/htdocs/wordpress/wp-content/uploads
 $wpUploadsBaseDir = getenv('WP_UPLOADS_DIR');
 if (!$wpUploadsBaseDir) {
-    $wpUploadsBaseDir = dirname(__DIR__, 2) . '/wordpress/wp-content/uploads';
+    $wpUploadsBaseDir = '/var/www/wordpress/wwwroot/wp-content/uploads';
 }
 
 $wpUploadsBaseDir = rtrim(str_replace('\\', '/', $wpUploadsBaseDir), '/');
@@ -93,6 +98,11 @@ if (!is_dir($uploadDir) && !mkdir($uploadDir, 0775, true)) {
 
 $safeFileName =  'winner_' . bin2hex(random_bytes(6)) . '.' . $allowedMimeToExt[$mimeType];
 $absolutePath = $uploadDir . '/' . $safeFileName;
+
+$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
+$host = $_SERVER['HTTP_HOST'];
+$baseUrl = $protocol . $host . '/';
+
 $relativePath = 'wp-content/uploads/' . date('Y') . '/' . date('m') . '/' . $safeFileName;
 
 if (!move_uploaded_file($tmpName, $absolutePath)) {
@@ -130,6 +140,7 @@ try {
             winner_photo_path VARCHAR(255) NOT NULL,
             status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
             agreed_terms TINYINT(1) NOT NULL DEFAULT 1,
+            post_order VARCHAR(25) NOT NULL,
             created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
     );
@@ -144,11 +155,13 @@ try {
 
     $stmt = $mysqli->prepare(
         "INSERT INTO wp_winner_photo_release_submissions
-        (first_name, last_name, email, phone, address_1, address_2, city, province, postal_code, winner_photo_path, status, agreed_terms)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)"
+        (first_name, last_name, email, phone, address_1, address_2, city, province, postal_code, winner_photo_path, status, agreed_terms, post_order)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)"
     );
+
+    $post_order = '1';
     $stmt->bind_param(
-        'ssssssssssi',
+        'ssssssssssis',
         $firstName,
         $lastName,
         $email,
@@ -159,7 +172,8 @@ try {
         $province,
         $postalCode,
         $relativePath,
-        $agreeTerms
+        $agreeTerms,
+        $post_order
     );
 
     $stmt->execute();
