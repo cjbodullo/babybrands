@@ -41,34 +41,8 @@ function pgp_ensure_winner_table_schema()
 
     $tableName = pgp_get_winner_table_name();
     if ($tableName === '') {
-        $tableName = $wpdb->prefix . 'winner_photo_release_submissions';
+        return;
     }
-
-    require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-
-    $charsetCollate = $wpdb->get_charset_collate();
-    $createSql = "CREATE TABLE `{$tableName}` (
-        id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
-        first_name VARCHAR(120) NOT NULL,
-        last_name VARCHAR(120) NOT NULL DEFAULT '',
-        email VARCHAR(190) NOT NULL,
-        phone VARCHAR(40) NOT NULL,
-        address_1 VARCHAR(255) NOT NULL,
-        address_2 VARCHAR(255) DEFAULT NULL,
-        city VARCHAR(120) NOT NULL,
-        province VARCHAR(120) NOT NULL,
-        postal_code VARCHAR(25) NOT NULL DEFAULT '',
-        winner_photo_path VARCHAR(255) NOT NULL,
-        status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
-        agreed_terms TINYINT(1) NOT NULL DEFAULT 1,
-        post_order VARCHAR(25) NOT NULL DEFAULT '1',
-        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY  (id),
-        KEY idx_status (status),
-        KEY idx_created_at (created_at)
-    ) {$charsetCollate};";
-
-    dbDelta($createSql);
 
     $statusColumn = $wpdb->get_var("SHOW COLUMNS FROM `{$tableName}` LIKE 'status'");
     if ($statusColumn === null) {
@@ -87,14 +61,11 @@ add_action('init', 'pgp_ensure_winner_table_schema');
 
 function pgp_enqueue_assets()
 {
-    $stylePath = PGP_PLUGIN_PATH . 'assets/css/photo-gallery-plugin.css';
-    $styleVersion = file_exists($stylePath) ? (string) filemtime($stylePath) : PGP_VERSION;
-
     wp_enqueue_style(
         'pgp-style',
         PGP_PLUGIN_URL . 'assets/css/photo-gallery-plugin.css',
         [],
-        $styleVersion
+        PGP_VERSION
     );
 
     wp_enqueue_style(
@@ -120,8 +91,8 @@ function pgp_enqueue_assets()
             });
         });
     ");
-
-    wp_enqueue_style(
+	
+	wp_enqueue_style(
         'swiper-css',
         'https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css'
     );
@@ -271,124 +242,9 @@ function pgp_build_winner_release_feedback_url($status, $message = '', $redirect
 
     return add_query_arg($args, $redirectUrl);
 }
-
 /**
- * Shortcode: [winner_photo_gallery limit="12" columns="4"]
- * Renders only approved winner submissions.
+ * Photo release form code 
  */
-function pgp_render_winner_photo_gallery($atts)
-{
-    global $wpdb;
-    pgp_ensure_winner_table_schema();
-
-    $onepage = 8;
-
-
-    $atts = shortcode_atts(
-        [
-            'limit' => 24,
-            'columns' => 3,
-            'order' => 'DESC',
-        ],
-        $atts,
-        'winner_photo_gallery'
-    );
-
-    $limit = max(1, min(60, absint($atts['limit'])));
-    $columns = max(1, min(6, absint($atts['columns'])));
-    $order = strtoupper((string) $atts['order']) === 'ASC' ? 'ASC' : 'DESC';
-
-    $tableName = pgp_get_winner_table_name();
-    if ($tableName === '') {
-        return '<p>Winner submissions table not found.</p>';
-    }
-
-    $query = "SELECT id, first_name, city, province, winner_photo_path, created_at
-              FROM {$tableName}
-              WHERE winner_photo_path IS NOT NULL
-                AND winner_photo_path <> ''
-                AND status = 'approved'
-              ORDER BY created_at {$order}
-              LIMIT %d";
-
-    $rows = $wpdb->get_results($wpdb->prepare($query, $limit));
-
-    if (empty($rows)) {
-        return '<div class="pgp-border-warning">
-                    <span class="pgp-warning-icon">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                            <path d="M12 9v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                            <path d="M12 17h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                            <path d="M10.29 3.86l-8.3 14.29A2 2 0 0 0 3.7 21h16.6a2 2 0 0 0 1.71-2.85l-8.3-14.29a2 2 0 0 0-3.42 0z" stroke="currentColor" stroke-width="2"/>
-                        </svg>
-                    </span>
-                    <span>Winner photos are currently under review.</span>
-                </div>';
-    }
-
-    $output  = '<div class="pgp-winner-wrapper">';
-    $output .= '<div class="swiper pgp-winner-swiper">';
-    $output .= '<div class="swiper-wrapper">';
-
-    $count = 0;
-
-    foreach ($rows as $row) {
-
-        $firstName = trim((string) $row->first_name);
-        $city = trim((string) $row->city);
-        $province = trim((string) $row->province);
-        $rawPath = trim((string) $row->winner_photo_path);
-
-        if ($rawPath === '') continue;
-
-        $photoUrl = pgp_build_photo_url($rawPath);
-        if ($photoUrl === '') continue;
-
-        $location = trim($city . (strlen($province) ? ', ' . $province : ''));
-        $altText = $firstName . ' Winner Photo';
-
-        // START SLIDE (12 items)
-        if ($count % $onepage === 0) {
-            $output .= '<div class="swiper-slide"><div class="pgp-winner-grid">';
-        }
-
-        $output .= '<article class="pgp-winner-card">';
-        $output .= '<a href="' . esc_url($photoUrl) . '" class="glightbox pgp-winner-link"
-                        data-gallery="pgp-winners"
-                        data-type="image">';
-
-        $output .= '<div class="pgp-winner-image-wrap">';
-        $output .= '<img class="pgp-winner-image" src="' . esc_url($photoUrl) . '" alt="' . esc_attr($altText) . '">';
-        $output .= '</div>';
-
-        $output .= '</a>';
-
-        $output .= '<div class="pgp-winner-meta">';
-        $output .= '<h3 class="pgp-winner-name">' . esc_html($firstName) . '</h3>';
-        $output .= '<p class="pgp-winner-location">' . esc_html($location) . '</p>';
-        $output .= '</div>';
-        $output .= '</article>';
-
-        $count++;
-
-        if ($count % $onepage === 0) {
-            $output .= '</div></div>';
-        }
-    }
-
-    if ($count % $onepage !== 0) {
-        $output .= '</div></div>';
-    }
-
-    $output .= '</div>'; // swiper-wrapper
-    $output .= '<div class="swiper-pagination"></div>';
-    $output .= '</div>'; // swiper
-    $output .= '</div>'; // wrapper
-
-    return $output;
-}
-add_shortcode('winner_photo_gallery', 'pgp_render_winner_photo_gallery');
-
 function pgp_get_recent_approved_winners($limit = 4)
 {
     global $wpdb;
@@ -955,6 +811,217 @@ function pgp_render_winner_photo_release_form_shortcode($atts)
 add_shortcode('winner_photo_release_form', 'pgp_render_winner_photo_release_form_shortcode');
 add_shortcode('winnerphotorelease', 'pgp_render_winner_photo_release_form_shortcode');
 
+/**
+ * Shortcode: [winner_photo_gallery limit="12" columns="4"]
+ * Renders only approved winner submissions.
+ */
+// function pgp_render_winner_photo_gallery($atts)
+// {
+//     global $wpdb;
+//     pgp_ensure_winner_table_schema();
+
+//     $atts = shortcode_atts(
+//         [
+//             'limit' => 12,
+//             'columns' => 4,
+//             'order' => 'DESC',
+//         ],
+//         $atts,
+//         'winner_photo_gallery'
+//     );
+
+//     $limit = max(1, min(60, absint($atts['limit'])));
+//     $columns = max(1, min(6, absint($atts['columns'])));
+//     $order = strtoupper((string) $atts['order']) === 'ASC' ? 'ASC' : 'DESC';
+
+//     $tableName = pgp_get_winner_table_name();
+//     if ($tableName === '') {
+//         return '<p>Winner submissions table not found.</p>';
+//     }
+
+//     $query = "SELECT id, first_name, city, province, winner_photo_path, created_at
+//               FROM `{$tableName}`
+//               WHERE winner_photo_path IS NOT NULL
+//                 AND winner_photo_path <> ''
+//                 AND status = 'approved'
+//               ORDER BY created_at {$order}
+//               LIMIT %d";
+
+//     $rows = $wpdb->get_results($wpdb->prepare($query, $limit));
+//     if (empty($rows)) {
+//     return '<div class="pgp-border-warning">
+//                 <span class="pgp-warning-icon">
+//                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+//                         <path d="M12 9v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+//                         <path d="M12 17h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+//                         <path d="M10.29 3.86l-8.3 14.29A2 2 0 0 0 3.7 21h16.6a2 2 0 0 0 1.71-2.85l-8.3-14.29a2 2 0 0 0-3.42 0z" stroke="currentColor" stroke-width="2"/>
+//                     </svg>
+//                 </span>
+//                 <span>Winner photos are currently under review.</span>
+//             </div>';
+// 	}
+
+//     $output = '<div class="pgp-winners pgp-winners-cols-' . esc_attr((string) $columns) . '">';
+
+//     foreach ($rows as $row) {
+//         $firstName = isset($row->first_name) ? trim((string) $row->first_name) : '';
+//         $city = isset($row->city) ? trim((string) $row->city) : '';
+//         $province = isset($row->province) ? trim((string) $row->province) : '';
+//         $rawPath = isset($row->winner_photo_path) ? trim((string) $row->winner_photo_path) : '';
+
+//         if ($rawPath === '') {
+//             continue;
+//         }
+
+//         $photoUrl = pgp_build_photo_url($rawPath);
+//         if ($photoUrl === '') {
+//             continue;
+//         }
+
+//         $location = trim($city . (strlen($province) ? ', ' . $province : ''));
+
+//         $altText = $firstName . ' Winner Photo';
+
+//         // GLIGHTBOX WRAPPER START
+//         $output .= '<article class="pgp-winner-card">';
+
+//         $output .= '<a href="' . esc_url($photoUrl) . '" 
+//                         class="glightbox pgp-winner-link"
+//                         data-gallery="pgp-winners"
+//                         data-type="image">';
+
+//         $output .= '<div class="pgp-winner-image-wrap">';
+//         $output .= '<img class="pgp-winner-image" src="' . esc_url($photoUrl) . '" alt="' . esc_attr($altText) . '">';
+//         $output .= '</div>';
+
+//         $output .= '</a>';
+
+//         $output .= '<div class="pgp-winner-meta">';
+//         $output .= '<h3 class="pgp-winner-name">' . esc_html($firstName) . '</h3>';
+//         $output .= '<p class="pgp-winner-location">' . esc_html($location) . '</p>';
+//         $output .= '</div>';
+
+//         $output .= '</article>';
+//     }
+
+//     $output .= '</div>';
+
+//     return $output;
+// }
+// add_shortcode('winner_photo_gallery', 'pgp_render_winner_photo_gallery');
+
+function pgp_render_winner_photo_gallery($atts)
+{
+    global $wpdb;
+    pgp_ensure_winner_table_schema();
+
+    $onepage = 8;
+
+    $atts = shortcode_atts(
+        [
+            'limit' => 24,
+            'columns' => 3,
+            'order' => 'DESC',
+        ],
+        $atts,
+        'winner_photo_gallery'
+    );
+
+    $limit = max(1, min(60, absint($atts['limit'])));
+    $columns = max(1, min(6, absint($atts['columns'])));
+    $order = strtoupper((string) $atts['order']) === 'ASC' ? 'ASC' : 'DESC';
+
+    $tableName = pgp_get_winner_table_name();
+    if ($tableName === '') {
+        return '<p>Winner submissions table not found.</p>';
+    }
+
+    $query = "SELECT id, first_name, city, province, winner_photo_path, created_at
+              FROM {$tableName}
+              WHERE winner_photo_path IS NOT NULL
+                AND winner_photo_path <> ''
+                AND status = 'approved'
+              ORDER BY created_at {$order}
+              LIMIT %d";
+
+    $rows = $wpdb->get_results($wpdb->prepare($query, $limit));
+
+    if (empty($rows)) {
+        return '<div class="pgp-border-warning">
+                    <span class="pgp-warning-icon">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                            <path d="M12 9v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M12 17h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M10.29 3.86l-8.3 14.29A2 2 0 0 0 3.7 21h16.6a2 2 0 0 0 1.71-2.85l-8.3-14.29a2 2 0 0 0-3.42 0z" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                    </span>
+                    <span>Winner photos are currently under review.</span>
+                </div>';
+    }
+
+    $output  = '<div class="pgp-winner-wrapper">';
+    $output .= '<div class="swiper pgp-winner-swiper">';
+    $output .= '<div class="swiper-wrapper" style="padding-bottom: 28px;">';
+
+    $count = 0;
+
+    foreach ($rows as $row) {
+
+        $firstName = trim((string) $row->first_name);
+        $city = trim((string) $row->city);
+        $province = trim((string) $row->province);
+        $rawPath = trim((string) $row->winner_photo_path);
+
+        if ($rawPath === '') continue;
+
+        $photoUrl = pgp_build_photo_url($rawPath);
+        if ($photoUrl === '') continue;
+
+        $location = trim($city . (strlen($province) ? ', ' . $province : ''));
+        $altText = $firstName . ' Winner Photo';
+
+        // START SLIDE (12 items)
+        if ($count % $onepage === 0) {
+            $output .= '<div class="swiper-slide"><div class="pgp-winner-grid">';
+        }
+
+        $output .= '<article class="pgp-winner-card">';
+        $output .= '<a href="' . esc_url($photoUrl) . '" class="glightbox pgp-winner-link"
+                        data-gallery="pgp-winners"
+                        data-type="image">';
+
+        $output .= '<div class="pgp-winner-image-wrap">';
+        $output .= '<img class="pgp-winner-image" src="' . esc_url($photoUrl) . '" alt="' . esc_attr($altText) . '">';
+        $output .= '</div>';
+
+        $output .= '</a>';
+
+        $output .= '<div class="pgp-winner-meta">';
+        $output .= '<h3 class="pgp-winner-name">' . esc_html($firstName) . '</h3>';
+        $output .= '<p class="pgp-winner-location">' . esc_html($location) . '</p>';
+        $output .= '</div>';
+        $output .= '</article>';
+
+        $count++;
+
+        if ($count % $onepage === 0) {
+            $output .= '</div></div>';
+        }
+    }
+
+    if ($count % $onepage !== 0) {
+        $output .= '</div></div>';
+    }
+
+    $output .= '</div>'; // swiper-wrapper
+    $output .= '<div class="swiper-dot swiper-pagination"></div>';
+    $output .= '</div>'; // swiper
+    $output .= '</div>'; // wrapper
+
+    return $output;
+}
+add_shortcode('winner_photo_gallery', 'pgp_render_winner_photo_gallery');
+
 function pgp_register_admin_menu()
 {
     add_menu_page(
@@ -1103,7 +1170,7 @@ function pgp_render_admin_page()
 
     echo '<table class="widefat striped">';
     echo '<thead><tr>';
-    echo '<th>ID</th><th>Photo</th><th>Name</th><th>Location</th><th>Status</th><th>Submitted</th><th>Actions</th>';
+    echo '<th>Photo</th><th>Name</th><th>Location</th><th>Status</th><th>Submitted</th><th>Actions</th>';
     echo '</tr></thead><tbody>';
     $hiddenDetailsHtml = '';
 
@@ -1147,7 +1214,6 @@ function pgp_render_admin_page()
         }
 
         echo '<tr>';
-        echo '<td style="vertical-align: middle;">' . esc_html((string) $key+1) . '</td>';
         echo '<td style="vertical-align: middle;">';
         if ($photoUrl) {
             echo '<img src="' . esc_url($photoUrl) . '" alt="" style="width:70px;height:70px;object-fit:cover;border-radius:8px;">';
@@ -1187,20 +1253,40 @@ function pgp_render_admin_page()
 
     echo '</tbody></table>';
 
-        // --- Default WP pagination ---
+    // --- Default WP pagination ---
     if ($total_pages > 1) {
         $pagination = paginate_links([
             'base'      => add_query_arg('paged','%#%'),
             'format'    => '',
-            'current'   => $current_page,
+            'current'   => max(1, $current_page),
             'total'     => $total_pages,
-            'prev_text' => __('&laquo; Prev'),
-            'next_text' => __('Next &raquo;'),
-            'type'      => 'list',
+            'prev_text' => '‹',
+            'next_text' => '›',
+            'type'      => 'array', // IMPORTANT: change to array
         ]);
-
         echo '<div class="tablenav"><div class="tablenav-pages">';
-        echo $pagination;
+        echo '<span class="pagination-links">';
+        // First page
+        if ($current_page > 1) {
+            echo '<a class="first-page button" href="'.esc_url(add_query_arg('paged', 1)).'">«</a>';
+        } else {
+            echo '<span class="tablenav-pages-navspan button disabled">«</span>';
+        }
+        // Page numbers
+        if (!empty($pagination)) {
+            foreach ($pagination as $page) {
+                $page_num = (int) wp_strip_all_tags($page);
+                $btn = ($current_page == $page_num) ? 'button-primary' : 'button';
+                echo str_replace('page-numbers', $btn, $page);
+            }
+        }
+        // Last page
+        if ($current_page < $total_pages) {
+            echo '<a class="last-page button" href="'.esc_url(add_query_arg('paged', $total_pages)).'">»</a>';
+        } else {
+            echo '<span class="tablenav-pages-navspan button disabled">»</span>';
+        }
+        echo '</span>';
         echo '</div></div>';
     }
 

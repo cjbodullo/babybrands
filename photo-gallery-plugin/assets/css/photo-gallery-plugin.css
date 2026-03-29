@@ -1148,3 +1148,12 @@
         min-width: 0;
     }
 }
+
+
+.tablenav .tablenav-pages .button .current{
+    background: #2271b1;
+    border-color: #2271b1;
+    color: #fff;
+    text-decoration: none;
+    text-shadow: none;
+}
