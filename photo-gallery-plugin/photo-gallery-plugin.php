@@ -41,8 +41,34 @@ function pgp_ensure_winner_table_schema()
 
     $tableName = pgp_get_winner_table_name();
     if ($tableName === '') {
-        return;
+        $tableName = $wpdb->prefix . 'winner_photo_release_submissions';
     }
+
+    require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+
+    $charsetCollate = $wpdb->get_charset_collate();
+    $createSql = "CREATE TABLE `{$tableName}` (
+        id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+        first_name VARCHAR(120) NOT NULL,
+        last_name VARCHAR(120) NOT NULL DEFAULT '',
+        email VARCHAR(190) NOT NULL,
+        phone VARCHAR(40) NOT NULL,
+        address_1 VARCHAR(255) NOT NULL,
+        address_2 VARCHAR(255) DEFAULT NULL,
+        city VARCHAR(120) NOT NULL,
+        province VARCHAR(120) NOT NULL,
+        postal_code VARCHAR(25) NOT NULL DEFAULT '',
+        winner_photo_path VARCHAR(255) NOT NULL,
+        status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+        agreed_terms TINYINT(1) NOT NULL DEFAULT 1,
+        post_order VARCHAR(25) NOT NULL DEFAULT '1',
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY  (id),
+        KEY idx_status (status),
+        KEY idx_created_at (created_at)
+    ) {$charsetCollate};";
+
+    dbDelta($createSql);
 
     $statusColumn = $wpdb->get_var("SHOW COLUMNS FROM `{$tableName}` LIKE 'status'");
     if ($statusColumn === null) {
@@ -61,11 +87,14 @@ add_action('init', 'pgp_ensure_winner_table_schema');
 
 function pgp_enqueue_assets()
 {
+    $stylePath = PGP_PLUGIN_PATH . 'assets/css/photo-gallery-plugin.css';
+    $styleVersion = file_exists($stylePath) ? (string) filemtime($stylePath) : PGP_VERSION;
+
     wp_enqueue_style(
         'pgp-style',
         PGP_PLUGIN_URL . 'assets/css/photo-gallery-plugin.css',
         [],
-        PGP_VERSION
+        $styleVersion
     );
 
     wp_enqueue_style(
@@ -89,6 +118,36 @@ function pgp_enqueue_assets()
                 loop: true,
                 zoomable: true,
             });
+        });
+    ");
+
+    wp_enqueue_style(
+        'swiper-css',
+        'https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css'
+    );
+
+    wp_enqueue_script(
+        'swiper-js',
+        'https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js',
+        [],
+        null,
+        true
+    );
+
+     wp_add_inline_script('swiper-js', "
+        document.addEventListener('DOMContentLoaded', function () {
+
+            if (window.innerWidth <= 768) return;
+
+            new Swiper('.pgp-winner-swiper', {
+                slidesPerView: 1,
+                spaceBetween: 20,
+                pagination: {
+                    el: '.swiper-pagination',
+                    clickable: true,
+                }
+            });
+
         });
     ");
 
@@ -172,6 +231,47 @@ function pgp_build_photo_url($rawPath)
     return $baseUrl . '/' . ltrim($rawPath, '/');
 }
 
+function pgp_get_winner_release_redirect_url()
+{
+    $redirectUrl = '';
+
+    if (is_singular()) {
+        $postId = get_queried_object_id();
+        if ($postId) {
+            $redirectUrl = get_permalink($postId);
+        }
+    }
+
+    if ($redirectUrl === '') {
+        $requestUri = isset($_SERVER['REQUEST_URI']) ? wp_unslash($_SERVER['REQUEST_URI']) : '/';
+        $redirectUrl = home_url($requestUri);
+    }
+
+    return remove_query_arg(['pgp_wpr_status', 'pgp_wpr_message'], $redirectUrl);
+}
+
+function pgp_get_winner_release_feedback()
+{
+    return [
+        'status' => isset($_GET['pgp_wpr_status']) ? sanitize_key(wp_unslash($_GET['pgp_wpr_status'])) : '',
+        'message' => isset($_GET['pgp_wpr_message']) ? sanitize_text_field(wp_unslash($_GET['pgp_wpr_message'])) : '',
+    ];
+}
+
+function pgp_build_winner_release_feedback_url($status, $message = '', $redirectUrl = '')
+{
+    if ($redirectUrl === '') {
+        $redirectUrl = pgp_get_winner_release_redirect_url();
+    }
+
+    $args = ['pgp_wpr_status' => $status];
+    if ($message !== '') {
+        $args['pgp_wpr_message'] = $message;
+    }
+
+    return add_query_arg($args, $redirectUrl);
+}
+
 /**
  * Shortcode: [winner_photo_gallery limit="12" columns="4"]
  * Renders only approved winner submissions.
@@ -181,10 +281,13 @@ function pgp_render_winner_photo_gallery($atts)
     global $wpdb;
     pgp_ensure_winner_table_schema();
 
+    $onepage = 8;
+
+
     $atts = shortcode_atts(
         [
-            'limit' => 12,
-            'columns' => 4,
+            'limit' => 24,
+            'columns' => 3,
             'order' => 'DESC',
         ],
         $atts,
@@ -201,7 +304,7 @@ function pgp_render_winner_photo_gallery($atts)
     }
 
     $query = "SELECT id, first_name, city, province, winner_photo_path, created_at
-              FROM `{$tableName}`
+              FROM {$tableName}
               WHERE winner_photo_path IS NOT NULL
                 AND winner_photo_path <> ''
                 AND status = 'approved'
@@ -209,45 +312,48 @@ function pgp_render_winner_photo_gallery($atts)
               LIMIT %d";
 
     $rows = $wpdb->get_results($wpdb->prepare($query, $limit));
-    if (empty($rows)) {
-    return '<div class="pgp-border-warning">
-                <span class="pgp-warning-icon">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                        <path d="M12 9v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                        <path d="M12 17h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                        <path d="M10.29 3.86l-8.3 14.29A2 2 0 0 0 3.7 21h16.6a2 2 0 0 0 1.71-2.85l-8.3-14.29a2 2 0 0 0-3.42 0z" stroke="currentColor" stroke-width="2"/>
-                    </svg>
-                </span>
-                <span>Winner photos are currently under review.</span>
-            </div>';
-	}
 
-    $output = '<div class="pgp-winners pgp-winners-cols-' . esc_attr((string) $columns) . '">';
+    if (empty($rows)) {
+        return '<div class="pgp-border-warning">
+                    <span class="pgp-warning-icon">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                            <path d="M12 9v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M12 17h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M10.29 3.86l-8.3 14.29A2 2 0 0 0 3.7 21h16.6a2 2 0 0 0 1.71-2.85l-8.3-14.29a2 2 0 0 0-3.42 0z" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                    </span>
+                    <span>Winner photos are currently under review.</span>
+                </div>';
+    }
+
+    $output  = '<div class="pgp-winner-wrapper">';
+    $output .= '<div class="swiper pgp-winner-swiper">';
+    $output .= '<div class="swiper-wrapper">';
+
+    $count = 0;
 
     foreach ($rows as $row) {
-        $firstName = isset($row->first_name) ? trim((string) $row->first_name) : '';
-        $city = isset($row->city) ? trim((string) $row->city) : '';
-        $province = isset($row->province) ? trim((string) $row->province) : '';
-        $rawPath = isset($row->winner_photo_path) ? trim((string) $row->winner_photo_path) : '';
 
-        if ($rawPath === '') {
-            continue;
-        }
+        $firstName = trim((string) $row->first_name);
+        $city = trim((string) $row->city);
+        $province = trim((string) $row->province);
+        $rawPath = trim((string) $row->winner_photo_path);
+
+        if ($rawPath === '') continue;
 
         $photoUrl = pgp_build_photo_url($rawPath);
-        if ($photoUrl === '') {
-            continue;
-        }
+        if ($photoUrl === '') continue;
 
         $location = trim($city . (strlen($province) ? ', ' . $province : ''));
-
         $altText = $firstName . ' Winner Photo';
 
-        // GLIGHTBOX WRAPPER START
-        $output .= '<article class="pgp-winner-card">';
+        // START SLIDE (12 items)
+        if ($count % $onepage === 0) {
+            $output .= '<div class="swiper-slide"><div class="pgp-winner-grid">';
+        }
 
-        $output .= '<a href="' . esc_url($photoUrl) . '" 
-                        class="glightbox pgp-winner-link"
+        $output .= '<article class="pgp-winner-card">';
+        $output .= '<a href="' . esc_url($photoUrl) . '" class="glightbox pgp-winner-link"
                         data-gallery="pgp-winners"
                         data-type="image">';
 
@@ -261,15 +367,593 @@ function pgp_render_winner_photo_gallery($atts)
         $output .= '<h3 class="pgp-winner-name">' . esc_html($firstName) . '</h3>';
         $output .= '<p class="pgp-winner-location">' . esc_html($location) . '</p>';
         $output .= '</div>';
-
         $output .= '</article>';
+
+        $count++;
+
+        if ($count % $onepage === 0) {
+            $output .= '</div></div>';
+        }
     }
 
-    $output .= '</div>';
+    if ($count % $onepage !== 0) {
+        $output .= '</div></div>';
+    }
+
+    $output .= '</div>'; // swiper-wrapper
+    $output .= '<div class="swiper-pagination"></div>';
+    $output .= '</div>'; // swiper
+    $output .= '</div>'; // wrapper
 
     return $output;
 }
 add_shortcode('winner_photo_gallery', 'pgp_render_winner_photo_gallery');
+
+function pgp_get_recent_approved_winners($limit = 4)
+{
+    global $wpdb;
+
+    $tableName = pgp_get_winner_table_name();
+    if ($tableName === '') {
+        return [];
+    }
+
+    $limit = max(1, min(12, absint($limit)));
+
+    $query = "SELECT first_name, city, province, winner_photo_path
+              FROM {$tableName}
+              WHERE winner_photo_path IS NOT NULL
+                AND winner_photo_path <> ''
+                AND status = 'approved'
+              ORDER BY created_at DESC
+              LIMIT %d";
+
+    return $wpdb->get_results($wpdb->prepare($query, $limit));
+}
+
+function pgp_handle_winner_photo_release_submission()
+{
+    global $wpdb;
+
+    $redirectUrl = isset($_POST['redirect_to']) ? esc_url_raw(wp_unslash($_POST['redirect_to'])) : home_url('/');
+    if ($redirectUrl === '') {
+        $redirectUrl = home_url('/');
+    }
+
+    if (
+        !isset($_POST['pgp_wpr_nonce']) ||
+        !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['pgp_wpr_nonce'])), 'pgp_submit_winner_photo_release')
+    ) {
+        wp_safe_redirect(pgp_build_winner_release_feedback_url('error', 'Security check failed. Please try again.', $redirectUrl));
+        exit;
+    }
+
+    pgp_ensure_winner_table_schema();
+    $tableName = pgp_get_winner_table_name();
+    if ($tableName === '') {
+        wp_safe_redirect(pgp_build_winner_release_feedback_url('error', 'Winner submissions table is not available.', $redirectUrl));
+        exit;
+    }
+
+    $firstName = isset($_POST['first_name']) ? sanitize_text_field(wp_unslash($_POST['first_name'])) : '';
+    $lastName = isset($_POST['last_name']) ? sanitize_text_field(wp_unslash($_POST['last_name'])) : '';
+    $email = isset($_POST['email']) ? sanitize_email(wp_unslash($_POST['email'])) : '';
+    $phone = isset($_POST['phone']) ? sanitize_text_field(wp_unslash($_POST['phone'])) : '';
+    $address1 = isset($_POST['address_1']) ? sanitize_text_field(wp_unslash($_POST['address_1'])) : '';
+    $address2 = isset($_POST['address_2']) ? sanitize_text_field(wp_unslash($_POST['address_2'])) : '';
+    $city = isset($_POST['city']) ? sanitize_text_field(wp_unslash($_POST['city'])) : '';
+    $province = isset($_POST['province']) ? sanitize_text_field(wp_unslash($_POST['province'])) : '';
+    $postalCode = isset($_POST['postal_code']) ? sanitize_text_field(wp_unslash($_POST['postal_code'])) : '';
+    $agreeTerms = isset($_POST['agree_terms']) ? 1 : 0;
+
+    if (
+        $firstName === '' ||
+        $email === '' ||
+        $phone === '' ||
+        $address1 === '' ||
+        $city === '' ||
+        $province === '' ||
+        $agreeTerms !== 1
+    ) {
+        wp_safe_redirect(pgp_build_winner_release_feedback_url('error', 'Please complete all required fields.', $redirectUrl));
+        exit;
+    }
+
+    if (!is_email($email)) {
+        wp_safe_redirect(pgp_build_winner_release_feedback_url('error', 'Please enter a valid email address.', $redirectUrl));
+        exit;
+    }
+
+    if (!isset($_FILES['winner_photo']) || !is_array($_FILES['winner_photo'])) {
+        wp_safe_redirect(pgp_build_winner_release_feedback_url('error', 'Please upload your winner photo.', $redirectUrl));
+        exit;
+    }
+
+    $photo = $_FILES['winner_photo'];
+    if ((int) ($photo['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+        wp_safe_redirect(pgp_build_winner_release_feedback_url('error', 'Photo upload failed. Please try again.', $redirectUrl));
+        exit;
+    }
+
+    $maxBytes = 10 * 1024 * 1024;
+    if ((int) ($photo['size'] ?? 0) > $maxBytes) {
+        wp_safe_redirect(pgp_build_winner_release_feedback_url('error', 'Photo exceeds the 10MB maximum size.', $redirectUrl));
+        exit;
+    }
+
+    $tmpName = isset($photo['tmp_name']) ? $photo['tmp_name'] : '';
+    if ($tmpName === '' || !is_uploaded_file($tmpName)) {
+        wp_safe_redirect(pgp_build_winner_release_feedback_url('error', 'Invalid uploaded file.', $redirectUrl));
+        exit;
+    }
+
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $mimeType = $finfo ? finfo_file($finfo, $tmpName) : '';
+    if ($finfo) {
+        finfo_close($finfo);
+    }
+
+    $allowedMimeTypes = [
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/webp' => 'webp',
+    ];
+
+    if (!isset($allowedMimeTypes[$mimeType])) {
+        wp_safe_redirect(pgp_build_winner_release_feedback_url('error', 'Only PNG, JPG and WEBP images are allowed.', $redirectUrl));
+        exit;
+    }
+
+    require_once ABSPATH . 'wp-admin/includes/file.php';
+
+    $uploaded = wp_handle_upload(
+        $photo,
+        [
+            'test_form' => false,
+            'mimes' => [
+                'jpg|jpeg' => 'image/jpeg',
+                'png' => 'image/png',
+                'webp' => 'image/webp',
+            ],
+        ]
+    );
+
+    if (!empty($uploaded['error'])) {
+        wp_safe_redirect(pgp_build_winner_release_feedback_url('error', $uploaded['error'], $redirectUrl));
+        exit;
+    }
+
+    $winnerPhotoPath = !empty($uploaded['url']) ? esc_url_raw($uploaded['url']) : '';
+    if ($winnerPhotoPath === '') {
+        if (!empty($uploaded['file']) && file_exists($uploaded['file'])) {
+            wp_delete_file($uploaded['file']);
+        }
+
+        wp_safe_redirect(pgp_build_winner_release_feedback_url('error', 'Unable to save the uploaded photo.', $redirectUrl));
+        exit;
+    }
+
+    $inserted = $wpdb->insert(
+        $tableName,
+        [
+            'first_name' => $firstName,
+            'last_name' => $lastName,
+            'email' => $email,
+            'phone' => $phone,
+            'address_1' => $address1,
+            'address_2' => $address2,
+            'city' => $city,
+            'province' => $province,
+            'postal_code' => $postalCode,
+            'winner_photo_path' => $winnerPhotoPath,
+            'status' => 'pending',
+            'agreed_terms' => $agreeTerms,
+            'post_order' => '1',
+            'created_at' => current_time('mysql'),
+        ],
+        [
+            '%s',
+            '%s',
+            '%s',
+            '%s',
+            '%s',
+            '%s',
+            '%s',
+            '%s',
+            '%s',
+            '%s',
+            '%s',
+            '%d',
+            '%s',
+            '%s',
+        ]
+    );
+
+    if ($inserted === false) {
+        if (!empty($uploaded['file']) && file_exists($uploaded['file'])) {
+            wp_delete_file($uploaded['file']);
+        }
+
+        wp_safe_redirect(pgp_build_winner_release_feedback_url('error', 'Database save failed. Please try again.', $redirectUrl));
+        exit;
+    }
+
+    wp_safe_redirect(pgp_build_winner_release_feedback_url('success', '', $redirectUrl));
+    exit;
+}
+add_action('admin_post_nopriv_pgp_submit_winner_photo_release', 'pgp_handle_winner_photo_release_submission');
+add_action('admin_post_pgp_submit_winner_photo_release', 'pgp_handle_winner_photo_release_submission');
+
+// [winner_photo_release_form show_winners="0" winner_limit="4"]
+// shortcode for the winner photo release form
+// show_winners: 1 to show winners, 0 to hide winners
+// winner_limit: number of winners to show
+// contact_email: email address to contact for questions
+
+function pgp_render_winner_photo_release_form_shortcode($atts)
+{
+    pgp_ensure_winner_table_schema();
+
+    $atts = shortcode_atts(
+        [
+            'show_winners' => '1',
+            'winner_limit' => 4,
+            'contact_email' => 'info@banybrands.com',
+        ],
+        $atts,
+        'winner_photo_release_form'
+    );
+
+    $showWinners = !in_array(strtolower((string) $atts['show_winners']), ['0', 'false', 'no'], true);
+    $winnerLimit = max(1, min(12, absint($atts['winner_limit'])));
+    $contactEmail = sanitize_email((string) $atts['contact_email']);
+    if ($contactEmail === '') {
+        $contactEmail = 'info@banybrands.com';
+    }
+
+    $feedback = pgp_get_winner_release_feedback();
+    $redirectUrl = pgp_get_winner_release_redirect_url();
+    $winners = $showWinners ? pgp_get_recent_approved_winners($winnerLimit) : [];
+    $isSuccess = $feedback['status'] === 'success';
+    $errorMessage = $feedback['status'] === 'error' ? $feedback['message'] : '';
+
+    ob_start();
+    ?>
+    <main class="wpr-page pgp-wpr-shell">
+        <div class="container wpr-container">
+        <div class="header pgp-wpr-header">
+            <h1>WINNER PHOTO RELEASE FORM</h1>
+            <?php if (!$isSuccess) : ?>
+                <p class="wpr-subtitle">Congratulations on your win! Please complete this form to give us permission to share your joy with our community.</p>
+            <?php endif; ?>
+        </div>
+
+        <?php if ($isSuccess) : ?>
+            <div class="pgp-wpr-thank-you wpr-thank-you">
+                <div class="wpr-thank-you-badge">Submission received</div>
+                <h2>Thank You!</h2>
+                <p>Your photo has been successfully submitted.</p>
+                <p>We appreciate you sharing your special moment with us.</p>
+                <a class="pgp-wpr-button btn-generate wpr-submit-btn" href="<?php echo esc_url($redirectUrl); ?>">Submit Another Photo</a>
+            </div>
+        <?php else : ?>
+            <div class="pgp-wpr-card wpr-form-wrap">
+                <?php if ($errorMessage !== '') : ?>
+                    <div class="pgp-wpr-alert pgp-wpr-alert-error"><?php echo esc_html($errorMessage); ?></div>
+                <?php endif; ?>
+
+                <?php if (!empty($winners)) : ?>
+                    <div class="pgp-wpr-winners winners-section">
+                        <h2>Real winners from our community</h2>
+                        <div class="pgp-wpr-winners-grid winners-gallery">
+                            <?php foreach ($winners as $winner) : ?>
+                                <?php
+                                $photoUrl = pgp_build_photo_url($winner->winner_photo_path ?? '');
+                                if ($photoUrl === '') {
+                                    continue;
+                                }
+                                $winnerName = trim((string) ($winner->first_name ?? ''));
+                                $winnerLocation = trim((string) ($winner->city ?? '') . ', ' . (string) ($winner->province ?? ''), ' ,');
+                                ?>
+                                <article class="pgp-wpr-winner-card gallery-item">
+                                    <a href="<?php echo esc_url($photoUrl); ?>" class="pgp-wpr-lightbox glightbox" data-gallery="pgp-wpr-gallery">
+                                        <img src="<?php echo esc_url($photoUrl); ?>" alt="<?php echo esc_attr($winnerName . ' winner photo'); ?>">
+                                    </a>
+                                    <div class="pgp-wpr-winner-meta winner-info">
+                                        <h4><?php echo esc_html($winnerName); ?></h4>
+                                        <p><?php echo esc_html($winnerLocation); ?></p>
+                                    </div>
+                                </article>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
+                <form id="winner-photo-release-form" class="pgp-wpr-form wpr-form" method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" enctype="multipart/form-data">
+                    <input type="hidden" name="action" value="pgp_submit_winner_photo_release">
+                    <input type="hidden" name="redirect_to" value="<?php echo esc_url($redirectUrl); ?>">
+                    <?php wp_nonce_field('pgp_submit_winner_photo_release', 'pgp_wpr_nonce'); ?>
+
+                    <div class="pgp-wpr-section form-section">
+                        <h3>Personal Information</h3>
+                        <div class="pgp-wpr-grid pgp-wpr-grid-two wpr-grid two-col">
+                            <div class="pgp-wpr-field wpr-field">
+                                <label for="pgp-wpr-first-name">First Name <span>*</span></label>
+                                <input class="pgp-wpr-input form-input" type="text" id="pgp-wpr-first-name" name="first_name" required>
+                            </div>
+                            <div class="pgp-wpr-field wpr-field">
+                                <label for="pgp-wpr-last-name">Last Name</label>
+                                <input class="pgp-wpr-input form-input" type="text" id="pgp-wpr-last-name" name="last_name">
+                            </div>
+                            <div class="pgp-wpr-field wpr-field">
+                                <label for="pgp-wpr-email">Email Address <span>*</span></label>
+                                <input class="pgp-wpr-input form-input" type="email" id="pgp-wpr-email" name="email" required>
+                            </div>
+                            <div class="pgp-wpr-field wpr-field">
+                                <label for="pgp-wpr-phone">Phone Number <span>*</span></label>
+                                <input class="pgp-wpr-input pgp-wpr-phone form-input" type="tel" id="pgp-wpr-phone" name="phone" placeholder="(123) 456-7890" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pgp-wpr-section form-section">
+                        <h3>Address Information</h3>
+                        <p class="pgp-wpr-note wpr-note">Your address and phone number are collected for internal records only and will not be displayed publicly.</p>
+                        <div class="pgp-wpr-grid pgp-wpr-grid-two wpr-grid two-col">
+                            <div class="pgp-wpr-field pgp-wpr-field-full wpr-field full">
+                                <label for="pgp-wpr-address-1">Address Line 1 <span>*</span></label>
+                                <input class="pgp-wpr-input form-input" type="text" id="pgp-wpr-address-1" name="address_1" required>
+                            </div>
+                            <div class="pgp-wpr-field wpr-field">
+                                <label for="pgp-wpr-city">City <span>*</span></label>
+                                <input class="pgp-wpr-input form-input" type="text" id="pgp-wpr-city" name="city" required>
+                            </div>
+                            <div class="pgp-wpr-field wpr-field">
+                                <label for="pgp-wpr-province">Province / Territory <span>*</span></label>
+                                <select class="pgp-wpr-input form-input form-select" id="pgp-wpr-province" name="province" required>
+                                    <option value="" selected disabled>Select your province</option>
+                                    <option value="AB">Alberta</option>
+                                    <option value="BC">British Columbia</option>
+                                    <option value="MB">Manitoba</option>
+                                    <option value="NB">New Brunswick</option>
+                                    <option value="NL">Newfoundland and Labrador</option>
+                                    <option value="NS">Nova Scotia</option>
+                                    <option value="ON">Ontario</option>
+                                    <option value="PE">Prince Edward Island</option>
+                                    <option value="QC">Quebec</option>
+                                    <option value="SK">Saskatchewan</option>
+                                    <option value="NT">Northwest Territories</option>
+                                    <option value="NU">Nunavut</option>
+                                    <option value="YT">Yukon</option>
+                                </select>
+                            </div>
+                            <div class="pgp-wpr-field wpr-field">
+                                <label for="pgp-wpr-postal-code">Postal Code</label>
+                                <input class="pgp-wpr-input form-input" type="text" id="pgp-wpr-postal-code" name="postal_code">
+                            </div>
+                            <div class="pgp-wpr-field wpr-field">
+                                <label for="pgp-wpr-address-2">Suite / Unit # (Optional)</label>
+                                <input class="pgp-wpr-input form-input" type="text" id="pgp-wpr-address-2" name="address_2">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pgp-wpr-section form-section">
+                        <h3>Upload Your Photo</h3>
+                        <div class="pgp-wpr-field wpr-field">
+                            <label for="winner_photo">Winner Photo <span>*</span></label>
+                            <label class="pgp-wpr-upload-box wpr-upload-box" id="upload-box">
+                                <input type="file" class="pgp-wpr-file-input" id="winner_photo" name="winner_photo" accept=".png,.jpg,.jpeg,.webp" required>
+                                <strong>Click to upload or drag and drop</strong>
+                                <span>PNG, JPG, JPEG or WEBP (MAX. 10MB)</span>
+                                <em class="pgp-wpr-file-name" id="upload-filename">No file selected</em>
+                            </label>
+                            <p class="pgp-wpr-upload-error wpr-upload-error" id="upload-error" aria-live="polite"></p>
+                            <img class="pgp-wpr-upload-preview wpr-upload-preview" id="upload-preview" alt="Uploaded winner photo preview">
+                        </div>
+                    </div>
+
+                    <div class="pgp-wpr-section form-section">
+                        <h3>Terms and Conditions</h3>
+                        <div class="pgp-wpr-terms wpr-terms">
+                            <label class="pgp-wpr-check wpr-check">
+                                <input type="checkbox" name="agree_terms" required>
+                                <span>I agree to the photo use terms. <b>*</b></span>
+                            </label>
+                            <p>By submitting this form, you agree that Baby Brands Gift Club / Samplits may use your first name, last initial, city, and province, and may use your approved photo on their website and social media as a monthly winner.</p>
+                            <a href="#" class="pgp-wpr-toggle-terms toggle-terms">View full terms</a>
+                            <div class="pgp-wpr-terms-box terms-box" hidden>
+                                <p>By checking this box and submitting this form, I grant Baby Brands Gift Club / Samplits and its affiliates the perpetual, royalty-free, worldwide right to use, reproduce, modify, publish, and distribute the submitted photograph(s) in any media format, including but not limited to websites, social media platforms, marketing materials, and promotional content.</p>
+                                <p>I understand that my first name, last initial, city, and province may be displayed alongside my photograph. I acknowledge that my full address and telephone number will be kept confidential and used solely for internal record-keeping purposes.</p>
+                                <p>I confirm that I am the rightful owner of the photograph or have obtained necessary permissions from the copyright holder. I waive any right to inspect or approve the finished product or any promotional materials in which the photograph may appear.</p>
+                                <p>I release Baby Brands Gift Club / Samplits from any claims, liabilities, or damages arising from the use of my photograph and information as described in these terms.</p>
+                            </div>
+                            <div class="pgp-wpr-privacy wpr-privacy">
+                                <strong>Privacy Notice:</strong>
+                                Your address and phone number are collected for internal records only and will not be displayed publicly.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pgp-wpr-actions button-group">
+                        <button type="submit" class="pgp-wpr-button btn-generate wpr-submit-btn">Submit Photo Release Form</button>
+                    </div>
+                </form>
+            </div>
+        <?php endif; ?>
+
+        <p class="pgp-wpr-contact wpr-contact">Questions? Contact us at <a href="mailto:<?php echo esc_attr($contactEmail); ?>"><?php echo esc_html($contactEmail); ?></a></p>
+        </div>
+    </main>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        if (window.GLightbox && !window.pgpWprLightbox) {
+            window.pgpWprLightbox = GLightbox({ selector: '.pgp-wpr-lightbox' });
+        }
+
+        document.querySelectorAll('.pgp-wpr-form').forEach(function (form) {
+            if (form.dataset.pgpReady === '1') {
+                return;
+            }
+            form.dataset.pgpReady = '1';
+
+            var shell = form.closest('.pgp-wpr-shell');
+            var fileInput = form.querySelector('.pgp-wpr-file-input');
+            var fileNameLabel = form.querySelector('.pgp-wpr-file-name');
+            var uploadBox = form.querySelector('.pgp-wpr-upload-box');
+            var uploadError = form.querySelector('.pgp-wpr-upload-error');
+            var uploadPreview = form.querySelector('.pgp-wpr-upload-preview');
+            var phoneInput = form.querySelector('.pgp-wpr-phone');
+            var toggleTermsButton = shell ? shell.querySelector('.pgp-wpr-toggle-terms') : null;
+            var termsBox = shell ? shell.querySelector('.pgp-wpr-terms-box') : null;
+            var maxFileSize = 10 * 1024 * 1024;
+            var allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+
+            function showUploadError(message) {
+                if (uploadError) {
+                    uploadError.textContent = message || '';
+                }
+            }
+
+            function clearPreview() {
+                if (!uploadPreview) {
+                    return;
+                }
+                uploadPreview.style.display = 'none';
+                uploadPreview.removeAttribute('src');
+            }
+
+            function showPreview(file) {
+                if (!uploadPreview) {
+                    return;
+                }
+
+                var reader = new FileReader();
+                reader.onload = function (event) {
+                    uploadPreview.src = event.target.result;
+                    uploadPreview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+
+            function validateFile(file) {
+                if (!file) {
+                    return 'Please select an image file.';
+                }
+                if (allowedTypes.indexOf(file.type) === -1) {
+                    return 'Only PNG, JPG, JPEG or WEBP files are allowed.';
+                }
+                if (file.size > maxFileSize) {
+                    return 'File is too large. Maximum size is 10MB.';
+                }
+                return '';
+            }
+
+            function setSelectedFile(file) {
+                var validationMessage = validateFile(file);
+
+                if (validationMessage) {
+                    fileInput.value = '';
+                    fileInput.setCustomValidity(validationMessage);
+                    fileNameLabel.textContent = 'No file selected';
+                    clearPreview();
+                    showUploadError(validationMessage);
+                    return false;
+                }
+
+                fileInput.setCustomValidity('');
+                fileNameLabel.textContent = file.name;
+                showUploadError('');
+                showPreview(file);
+                return true;
+            }
+
+            if (fileInput && fileNameLabel && uploadBox) {
+                fileInput.addEventListener('change', function () {
+                    if (!fileInput.files || !fileInput.files.length) {
+                        fileNameLabel.textContent = 'No file selected';
+                        clearPreview();
+                        showUploadError('');
+                        return;
+                    }
+
+                    setSelectedFile(fileInput.files[0]);
+                });
+
+                uploadBox.addEventListener('dragover', function (event) {
+                    event.preventDefault();
+                    uploadBox.classList.add('is-dragging');
+                });
+
+                uploadBox.addEventListener('dragleave', function () {
+                    uploadBox.classList.remove('is-dragging');
+                });
+
+                uploadBox.addEventListener('drop', function (event) {
+                    event.preventDefault();
+                    uploadBox.classList.remove('is-dragging');
+
+                    if (!event.dataTransfer || !event.dataTransfer.files || !event.dataTransfer.files.length) {
+                        return;
+                    }
+
+                    var droppedFile = event.dataTransfer.files[0];
+                    if (!setSelectedFile(droppedFile)) {
+                        return;
+                    }
+
+                    var dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(droppedFile);
+                    fileInput.files = dataTransfer.files;
+                });
+            }
+
+            if (phoneInput) {
+                phoneInput.addEventListener('input', function () {
+                    var digits = phoneInput.value.replace(/\D/g, '').slice(0, 10);
+
+                    if (digits.length <= 3) {
+                        phoneInput.value = digits;
+                    } else if (digits.length <= 6) {
+                        phoneInput.value = '(' + digits.slice(0, 3) + ') ' + digits.slice(3);
+                    } else {
+                        phoneInput.value = '(' + digits.slice(0, 3) + ') ' + digits.slice(3, 6) + '-' + digits.slice(6);
+                    }
+                });
+            }
+
+            if (toggleTermsButton && termsBox) {
+                toggleTermsButton.addEventListener('click', function (event) {
+                    event.preventDefault();
+                    var isHidden = termsBox.hasAttribute('hidden');
+                    if (isHidden) {
+                        termsBox.removeAttribute('hidden');
+                        toggleTermsButton.textContent = 'Hide full terms';
+                    } else {
+                        termsBox.setAttribute('hidden', 'hidden');
+                        toggleTermsButton.textContent = 'View full terms';
+                    }
+                });
+            }
+
+            form.addEventListener('submit', function () {
+                if (!fileInput || !fileInput.files || !fileInput.files.length) {
+                    return;
+                }
+
+                var validationMessage = validateFile(fileInput.files[0]);
+                fileInput.setCustomValidity(validationMessage);
+                showUploadError(validationMessage);
+            });
+        });
+    });
+    </script>
+    <?php
+
+    return ob_get_clean();
+}
+add_shortcode('winner_photo_release_form', 'pgp_render_winner_photo_release_form_shortcode');
+add_shortcode('winnerphotorelease', 'pgp_render_winner_photo_release_form_shortcode');
 
 function pgp_register_admin_menu()
 {
